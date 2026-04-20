@@ -4,7 +4,7 @@ pipeline {
     environment {
         // Определяем параметры в зависимости от ветки
         APP_PORT = "${BRANCH_NAME == 'main' ? '3000' : '3001'}"
-        IMAGE_NAME = "${BRANCH_NAME == 'main' ? 'nodemain' : 'nodedev'}"
+        IMAGE_NAME = "${BRANCH_NAME == 'main' ? 'anton0777/nodemain' : 'anton0777/nodedev'}"
         IMAGE_TAG = "v1.0"
     }
 
@@ -60,7 +60,8 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-hub-creds') {
-                        appImage.push("${IMAGE_TAG}")
+                        // Находим образ по имени и пушим его
+                        docker.image("${IMAGE_NAME}:${IMAGE_TAG}").push("${IMAGE_TAG}")
                     }
                 }
             }
