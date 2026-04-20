@@ -42,18 +42,14 @@ pipeline {
         }
 
         stage('Deploy') {
-            steps {
-                script {
-                    // Остановка и удаление старого контейнера (минимизация downtime)
-                    sh "docker stop ${IMAGE_NAME} || true"
-                    sh "docker rm ${IMAGE_NAME} || true"
-                    
-                    // Запуск нового
-                    // Обратите внимание: внутренний порт приложения 3000, 
-                    // внешний меняется согласно APP_PORT
-                    sh "docker run -d --name ${IMAGE_NAME} -p ${APP_PORT}:3000 ${IMAGE_NAME}:${IMAGE_TAG}"
-                }
+        steps {
+            script {
+                // Удаляем только тот контейнер, который соответствует текущей ветке
+                sh "docker stop ${IMAGE_NAME} || true"
+                sh "docker rm ${IMAGE_NAME} || true"
+                sh "docker run -d --name ${IMAGE_NAME} -p ${APP_PORT}:3000 ${IMAGE_NAME}:${IMAGE_TAG}"
             }
         }
+    }
     }
 }
