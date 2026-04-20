@@ -15,6 +15,13 @@ pipeline {
             }
         }
 
+        stage('Lint Dockerfile') {
+            steps {
+                // Проверка синтаксиса Dockerfile
+                sh 'docker run --rm -i hadolint/hadolint < Dockerfile'
+            }
+        }
+
         stage('Build') {
             steps {
                 // Используем NodeJS, настроенный в Global Tool Configuration
@@ -41,15 +48,34 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
-        steps {
-            script {
-                // Удаляем только тот контейнер, который соответствует текущей ветке
-                sh "docker stop ${IMAGE_NAME} || true"
-                sh "docker rm ${IMAGE_NAME} || true"
-                sh "docker run -d --name ${IMAGE_NAME} -p ${APP_PORT}:3000 ${IMAGE_NAME}:${IMAGE_TAG}"
+        stage('Security Scan (Trivy)') {
+            steps {
+                // Сканируем созданный образ. 
+                // --severity HIGH,CRITICAL заставит билд упасть только при серьезных дырах
+                sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image ${IMAGE_NAME}:${IMAGE_TAG}"
             }
         }
-    }
+
+        stage('Push to Docker Hub') {
+            steps {
+                script {
+                    docker.withRegistry('https://index.docker.io/v1/', 'docker-hub-creds') {
+                        appImage.push("${IMAGE_TAG}")
+                    }
+                }
+            }
+            post {
+                success {
+                    // Триггерим дочерние пайплайны в зависимости от ветки
+                    script {
+                        if (BRANCH_NAME == 'main') {
+                            build job: 'Deploy_to_main', wait: false
+                        } else if (BRANCH_NAME == 'dev') {
+                            build job: 'Deploy_to_dev', wait: false
+                        }
+                    }
+                }
+            }
+        }
     }
 }
